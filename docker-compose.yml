@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  # Primary Database for Express (Lissan & Yasith)
+  mongodb:
+    image: mongo:6.0
+    container_name: wastewise-db
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - wastewise-network
+
+  # Performance Cache for the Dashboard (Lissan)
+  redis:
+    image: redis:7.0-alpine
+    container_name: wastewise-cache
+    ports:
+      - "6379:6379"
+    networks:
+      - wastewise-network
+
+  # Optional: Web UI to view MongoDB data during debugging
+  mongo-express:
+    image: mongo-express
+    container_name: wastewise-ui
+    ports:
+      - "8081:8081"
+    environment:
+      - ME_CONFIG_MONGODB_SERVER=mongodb
+      - ME_CONFIG_MONGODB_PORT=27017
+    networks:
+      - wastewise-network
+    depends_on:
+      - mongodb
+
+networks:
+  wastewise-network:
+    driver: bridge
+
+volumes:
+  mongo-data:
