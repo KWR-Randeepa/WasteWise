@@ -31,6 +31,10 @@ const UserSchema = new mongoose.Schema(
       type: String,
       required: [true, "Please add an address"],
     },
+    location: {
+      latitude: { type: Number },
+      longitude: { type: Number },
+    },
     points: {
       type: Number,
       default: 0, // For Yasith's Reward System
