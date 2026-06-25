@@ -1,4 +1,4 @@
-export const BASE_URL = 'http://10.99.218.185:5000/api';
+export const BASE_URL = 'http://192.168.8.101:5000/api';
 
 // Note: If you are testing on a physical device over Wi-Fi (via Expo Go), 
 // '10.0.2.2' will not work because that is the Android emulator's loopback IP.

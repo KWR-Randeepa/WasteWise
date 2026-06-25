@@ -1,8 +1,9 @@
 import express from "express";
-import { createWasteEntry } from "../controllers/wasteController.js";
+import { createWasteEntry, getUserWasteEntries } from "../controllers/wasteController.js";
 
 const router = express.Router();
 
 router.post("/", createWasteEntry);
+router.get("/user/:userId", getUserWasteEntries);
 
 export default router;

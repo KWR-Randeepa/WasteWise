@@ -9,6 +9,7 @@ import HomeScreen from './src/screens/HomeScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import SignupScreen from './src/screens/SignupScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
+import RewardScreen from './src/screens/RewardScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -47,6 +48,16 @@ export default function App() {
               title: '', 
               headerLeft: () => null, // Prevents going back to login screen easily
               headerShadowVisible: false,
+              headerStyle: { backgroundColor: '#F9FAFB' }
+            }} 
+          />
+          <Stack.Screen 
+            name="Reward" 
+            component={RewardScreen} 
+            options={{ 
+              title: 'Eco Rewards', 
+              headerShadowVisible: false,
+              headerTintColor: '#10B981',
               headerStyle: { backgroundColor: '#F9FAFB' }
             }} 
           />
