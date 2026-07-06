@@ -1,13 +1,41 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Text, View, TouchableOpacity, SafeAreaView, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { BASE_URL } from '../config';
 
 export default function DashboardScreen({ navigation, route }) {
-  const user = route.params?.user;
+  const [currentUser, setCurrentUser] = useState(route.params?.user);
   
   const [wasteType, setWasteType] = useState(null);
   const [wasteSize, setWasteSize] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  React.useEffect(() => {
+    Alert.alert(
+      "New Feature Available",
+      "You can now report Hazardous Waste. Use the new ⚠️ button to log hazardous items and earn points.",
+      [{ text: "Got it" }]
+    );
+  }, []);
+
+  const fetchUserProfile = async () => {
+    if (!currentUser || !currentUser.id) return;
+    try {
+      const response = await fetch(`${BASE_URL}/auth/profile/${currentUser.id}`);
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setCurrentUser(data.user);
+      }
+    } catch (error) {
+      console.error("Failed to fetch user profile:", error);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchUserProfile();
+    }, [])
+  );
 
   const handleLogout = () => {
     navigation.reset({
@@ -22,7 +50,7 @@ export default function DashboardScreen({ navigation, route }) {
       return;
     }
 
-    if (!user || !user.id) {
+    if (!currentUser || !currentUser.id) {
       Alert.alert("Error", "User not found. Please log in again.");
       return;
     }
@@ -33,7 +61,7 @@ export default function DashboardScreen({ navigation, route }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: user.id,
+          userId: currentUser.id,
           wasteType,
           wasteSize
         }),
@@ -42,9 +70,10 @@ export default function DashboardScreen({ navigation, route }) {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        Alert.alert("Success", "Waste entry saved successfully! Thank you for recycling.");
+        Alert.alert("Success", `Waste entry saved successfully! +${data.pointsEarned} points. Thank you for recycling.`);
         setWasteType(null);
         setWasteSize(null);
+        fetchUserProfile(); // Instantly sync profile points
       } else {
         Alert.alert("Failed", data.error || "Could not save entry.");
       }
@@ -95,16 +124,28 @@ export default function DashboardScreen({ navigation, route }) {
     <SafeAreaView className="flex-1 bg-gray-50">
       {/* Account Header Section */}
       <View className="flex-row items-center px-6 pt-6 pb-4 bg-white border-b border-gray-200 shadow-sm z-10">
-        <View className="w-14 h-14 bg-emerald-100 rounded-full justify-center items-center border-2 border-emerald-500 mr-4 shadow-sm">
+        <TouchableOpacity 
+          onPress={() => navigation.navigate('Reward', { user: currentUser })}
+          className="w-14 h-14 bg-emerald-100 rounded-full justify-center items-center border-2 border-emerald-500 mr-4 shadow-sm"
+        >
           <Text className="text-emerald-600 text-2xl font-bold">
-            {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
+            {currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : 'U'}
           </Text>
-        </View>
+        </TouchableOpacity>
         <View className="flex-1">
           <Text className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-0.5">My Account</Text>
-          <Text className="text-xl font-bold text-gray-800">
-            {user?.name || 'User'}
-          </Text>
+          <View className="flex-row items-center justify-between">
+            <Text className="text-xl font-bold text-gray-800">
+              {currentUser?.name || 'User'}
+            </Text>
+            <TouchableOpacity 
+              onPress={() => navigation.navigate('Reward', { user: currentUser })}
+              className="bg-emerald-50 border border-emerald-200 rounded-full px-3 py-1 flex-row items-center"
+            >
+              <Text className="text-xs mr-1">⭐</Text>
+              <Text className="text-emerald-700 text-xs font-bold">{currentUser?.points || 0} pts</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 
@@ -117,14 +158,15 @@ export default function DashboardScreen({ navigation, route }) {
           <View className="flex-row gap-4">
             {renderTypeButton('Organic', 'organic', '🍏')}
             {renderTypeButton('Solid', 'solid', '🥤')}
+            {renderTypeButton('Hazardous', 'hazardous', '⚠️')}
           </View>
         </View>
 
         <View className="mb-8">
           <Text className="text-xl font-bold text-gray-800 mb-4">2. Select Waste Size</Text>
-          {renderSizeButton('Small Bag', 'small', 'Under 5kg - Fits in one hand')}
-          {renderSizeButton('Medium Bag', 'medium', '5kg to 15kg - Standard grocery bag')}
-          {renderSizeButton('Large Bag', 'large', 'Over 15kg - Full garbage bin')}
+          {renderSizeButton('Small Bag (1 pt)', 'small', 'Under 5kg - Fits in one hand')}
+          {renderSizeButton('Medium Bag (2 pts)', 'medium', '5kg to 15kg - Standard grocery bag')}
+          {renderSizeButton('Large Bag (3 pts)', 'large', 'Over 15kg - Full garbage bin')}
         </View>
 
         <TouchableOpacity 
