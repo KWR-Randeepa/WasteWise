@@ -46,7 +46,7 @@ export default function DashboardScreen({ navigation, route }) {
 
   const handleSubmit = async () => {
     if (!wasteType || !wasteSize) {
-      Alert.alert("Missing Fields", "Please select both a waste type and a waste size.");
+      Alert.alert("Missing Fields", "Please select a waste type and a waste size.");
       return;
     }
 

@@ -35,7 +35,7 @@ export default function LoginScreen({ navigation }) {
       }
     } catch (error) {
       console.error('Login error:', error);
-      Alert.alert('Error', 'Could not connect to the server. Please try again.');
+      Alert.alert('Network Error', `Could not connect to backend server at:\n${BASE_URL}\n\nPlease verify that the backend server is running and accessible.`);
     } finally {
       setLoading(false);
     }

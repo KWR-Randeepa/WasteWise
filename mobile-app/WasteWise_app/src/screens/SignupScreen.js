@@ -66,8 +66,13 @@ export default function SignupScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
 
   const handleSignup = async () => {
-    if (!firstName || !lastName || !email || !password || !address) {
+    if (!firstName.trim() || !lastName.trim() || !email.trim() || !password || !address.trim()) {
       Alert.alert('Error', 'Please fill in all required fields.');
+      return;
+    }
+
+    if (password.length < 6) {
+      Alert.alert('Error', 'Password must be at least 6 characters long.');
       return;
     }
 
@@ -79,10 +84,10 @@ export default function SignupScreen({ navigation }) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          name: `${firstName} ${lastName}`,
-          email,
+          name: `${firstName.trim()} ${lastName.trim()}`,
+          email: email.trim().toLowerCase(),
           password,
-          address,
+          address: address.trim(),
           location,
         }),
       });
@@ -97,7 +102,7 @@ export default function SignupScreen({ navigation }) {
       }
     } catch (error) {
       console.error('Signup error:', error);
-      Alert.alert('Error', 'Could not connect to the server. Please try again.');
+      Alert.alert('Network Error', `Could not connect to backend server at:\n${BASE_URL}\n\nPlease verify that the backend server is running and accessible.`);
     } finally {
       setLoading(false);
     }

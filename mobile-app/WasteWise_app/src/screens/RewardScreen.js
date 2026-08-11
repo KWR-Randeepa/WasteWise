@@ -138,8 +138,15 @@ export default function RewardScreen({ route, navigation }) {
   };
 
   const formatDate = (dateString) => {
-    const options = { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
-    return new Date(dateString).toLocaleDateString(undefined, options);
+    if (!dateString) return '';
+    try {
+      const d = new Date(dateString);
+      if (isNaN(d.getTime())) return '';
+      const options = { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+      return d.toLocaleDateString(undefined, options);
+    } catch (e) {
+      return '';
+    }
   };
 
   const renderRewardItem = ({ item }) => {
@@ -232,7 +239,9 @@ export default function RewardScreen({ route, navigation }) {
           </Text>
         </TouchableOpacity>
         <TouchableOpacity 
-          onPress={() => setActiveTab('history')}
+          onPress={() => {
+            Alert.alert("Coming Soon", "This feature will be available soon.");
+          }}
           className={`flex-1 py-3 rounded-xl justify-center items-center ${
             activeTab === 'history' ? 'bg-white shadow-sm' : ''
           }`}
