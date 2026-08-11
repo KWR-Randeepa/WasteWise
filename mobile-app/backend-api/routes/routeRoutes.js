@@ -10,7 +10,6 @@
  * Note: seed-trucks and optimize are defined BEFORE /:truckId to prevent
  * Express from matching them as truckId parameters.
  */
-
 import express from "express";
 import {
   optimizeRoutes,

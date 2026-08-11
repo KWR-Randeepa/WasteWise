@@ -41,4 +41,3 @@ const getBaseUrl = () => {
 export const BASE_URL = getBaseUrl();
 
 console.log(`🌐 [WasteWise API] Using BASE_URL: ${BASE_URL}`);
-

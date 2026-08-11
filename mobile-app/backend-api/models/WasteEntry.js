@@ -9,7 +9,7 @@ const WasteEntrySchema = new mongoose.Schema(
     },
     wasteType: {
       type: String,
-      enum: ["organic", "solid"],
+      enum: ["organic", "solid", "hazardous"],
       required: [true, "Please select a waste type"],
     },
     wasteSize: {
@@ -19,8 +19,12 @@ const WasteEntrySchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["pending", "collected", "rejected"],
+      enum: ["pending", "collected", "rejected", "scheduled"],
       default: "pending",
+    },
+    pointsEarned: {
+      type: Number,
+      default: 0,
     },
   },
   { timestamps: true }
