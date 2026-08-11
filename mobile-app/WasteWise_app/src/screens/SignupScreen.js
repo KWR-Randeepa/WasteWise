@@ -87,7 +87,15 @@ export default function SignupScreen({ navigation }) {
         }),
       });
 
-      const data = await response.json();
+      const responseText = await response.text();
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseErr) {
+        console.error('Server returned non-JSON response:', responseText);
+        Alert.alert('Connection Error', 'Received unexpected response from server. Please check your backend URL and network connection.');
+        return;
+      }
 
       if (response.ok && data.success) {
         Alert.alert('Success', 'Account created successfully!');

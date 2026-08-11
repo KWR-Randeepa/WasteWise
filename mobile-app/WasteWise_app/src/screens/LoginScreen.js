@@ -24,7 +24,15 @@ export default function LoginScreen({ navigation }) {
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await response.json();
+      const responseText = await response.text();
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseErr) {
+        console.error('Server returned non-JSON response:', responseText);
+        Alert.alert('Connection Error', 'Received unexpected response from server. Please check your backend URL and network connection.');
+        return;
+      }
 
       if (response.ok && data.success) {
         Alert.alert('Success', 'Logged in successfully!');
@@ -35,7 +43,7 @@ export default function LoginScreen({ navigation }) {
       }
     } catch (error) {
       console.error('Login error:', error);
-      Alert.alert('Error', 'Could not connect to the server. Please try again.');
+      Alert.alert('Error', 'Could not connect to the server. Please check your internet connection or IP config.');
     } finally {
       setLoading(false);
     }

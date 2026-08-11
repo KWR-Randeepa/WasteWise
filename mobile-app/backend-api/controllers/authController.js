@@ -24,23 +24,35 @@ export const register = async (req, res) => {
 
 // Login User
 export const login = async (req, res) => {
-  const { email, password } = req.body;
+  try {
+    const { email, password } = req.body;
 
-  // Check for user
-  const user = await User.findOne({ email }).select("+password");
-  if (!user || !(await user.matchPassword(password))) {
-    return res
-      .status(401)
-      .json({ success: false, error: "Invalid credentials" });
+    if (!email || !password) {
+      return res
+        .status(400)
+        .json({ success: false, error: "Please provide email and password" });
+    }
+
+    // Check for user
+    const user = await User.findOne({ email }).select("+password");
+    if (!user || !(await user.matchPassword(password))) {
+      return res
+        .status(401)
+        .json({ success: false, error: "Invalid credentials" });
+    }
+
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || "fallback_secret", {
+      expiresIn: "30d",
+    });
+    
+    res.status(200).json({ 
+      success: true, 
+      token, 
+      role: user.role,
+      user: { id: user._id, name: user.name, email: user.email, role: user.role, points: user.points || 0 }
+    });
+  } catch (err) {
+    console.error("[login] Error:", err);
+    res.status(500).json({ success: false, error: err.message || "Server error during login" });
   }
-
-  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-    expiresIn: "30d",
-  });
-  res.status(200).json({ 
-    success: true, 
-    token, 
-    role: user.role,
-    user: { id: user._id, name: user.name, email: user.email, role: user.role, points: user.points || 0 }
-  });
 };

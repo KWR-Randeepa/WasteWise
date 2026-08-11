@@ -72,4 +72,30 @@ router.post("/redeem", async (req, res) => {
   }
 });
 
+// Fetch Top Eco Champions Leaderboard
+router.get("/leaderboard", async (req, res) => {
+  try {
+    const topUsers = await User.find({})
+      .select("name address points role createdAt")
+      .sort({ points: -1, createdAt: 1 })
+      .limit(15);
+
+    const leaderboard = topUsers.map((u, index) => ({
+      rank: index + 1,
+      id: u._id,
+      name: u.name,
+      address: u.address,
+      points: u.points || 0,
+      role: u.role,
+    }));
+
+    res.json({
+      success: true,
+      data: leaderboard,
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 export default router;
