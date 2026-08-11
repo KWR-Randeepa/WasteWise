@@ -7,7 +7,9 @@ import {
   Marker,
   Popup,
   Rectangle,
+  Polyline,
 } from "react-leaflet";
+
 
 import "leaflet/dist/leaflet.css";
 
@@ -24,6 +26,30 @@ L.Icon.Default.mergeOptions({
   shadowUrl:
     "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
+
+// CMC coordinates [latitude, longitude] for map markers/routing comparison
+const CMC_MAP_LATLNG = [6.9158, 79.8638];
+
+// Helper to find the index of the coordinate in optimizedPolyline closest to the target
+const findClosestIndex = (polyline, target) => {
+  let minDistance = Infinity;
+  let closestIndex = 0;
+  for (let i = 0; i < polyline.length; i++) {
+    const dist = Math.pow(polyline[i][0] - target[0], 2) + Math.pow(polyline[i][1] - target[1], 2);
+    if (dist < minDistance) {
+      minDistance = dist;
+      closestIndex = i;
+    }
+  }
+  return closestIndex;
+};
+
+// Helper to get angle in degrees between two LatLngs for direction arrows
+const getAngle = (c1, c2) => {
+  const dy = c2[0] - c1[0];
+  const dx = c2[1] - c1[1];
+  return (Math.atan2(dy, dx) * 180) / Math.PI;
+};
 
 function AdminDashboard() {
   const navigate = useNavigate();
@@ -46,6 +72,18 @@ function AdminDashboard() {
   });
 
   // ======================================================
+  // ROUTE PREVIEW STATE
+  // ======================================================
+
+  const [routePreviewZone, setRoutePreviewZone] = useState("NW");
+  const [routePreviewDate, setRoutePreviewDate] = useState(
+    new Date().toISOString().split("T")[0]
+  );
+  const [routePreviewData, setRoutePreviewData] = useState([]);
+  const [activeTab, setActiveTab] = useState("map");
+
+
+  // ======================================================
   // AUTH
   // ======================================================
 
@@ -65,6 +103,53 @@ function AdminDashboard() {
     fetchResidents();
     fetchWasteEntries();
   }, [navigate]);
+
+  // ======================================================
+  // GET TOKEN FROM LOCAL STORAGE
+  // ======================================================
+
+  const getToken = () => {
+    const info = JSON.parse(localStorage.getItem("userInfo") || "null");
+    return info?.token || "";
+  };
+
+  // ======================================================
+  // FETCH ROUTE PREVIEW
+  // ======================================================
+
+  const fetchRoutePreview = async () => {
+    try {
+      const token = getToken();
+      const res = await fetch(
+        `http://localhost:5000/api/routes?zone=${routePreviewZone}&date=${routePreviewDate}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const data = await res.json();
+      setRoutePreviewData(data.routes || []);
+    } catch (err) {
+      console.error("Failed to fetch route preview:", err);
+    }
+  };
+
+  const handleManualGenerate = async () => {
+    try {
+      const token = getToken();
+      const res = await fetch("http://localhost:5000/api/routes/generate", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ zone: routePreviewZone, date: routePreviewDate })
+      });
+      if (res.ok) {
+        alert(`Route generation started for Zone ${routePreviewZone}`);
+      }
+    } catch (err) {
+      console.error("Failed to trigger manual generation:", err);
+    }
+  };
+
 
   // ======================================================
   // FETCH DOCUMENTS
@@ -105,8 +190,9 @@ function AdminDashboard() {
       if (res.ok) {
         const residentUsers = data.filter(
           (user) =>
-            user.role === "resident" &&
-            user.location
+            user.role === "user" &&
+            user.location?.coordinates &&
+            user.location.coordinates.length >= 2
         );
 
         setResidents(residentUsers);
@@ -264,8 +350,8 @@ function AdminDashboard() {
   // COUNT RESIDENTS
   residents.forEach((resident) => {
     const zone = getZone(
-      resident.location.latitude,
-      resident.location.longitude
+      resident.location.coordinates[1],
+      resident.location.coordinates[0]
     );
 
     if (zone) {
@@ -282,8 +368,8 @@ function AdminDashboard() {
     if (!resident) return;
 
     const zone = getZone(
-      resident.location.latitude,
-      resident.location.longitude
+      resident.location.coordinates[1],
+      resident.location.coordinates[0]
     );
 
     if (!zone) return;
@@ -315,8 +401,8 @@ function AdminDashboard() {
       if (!resident) return;
 
       const residentZone = getZone(
-        resident.location.latitude,
-        resident.location.longitude
+        resident.location.coordinates[1],
+        resident.location.coordinates[0]
       );
 
       if (residentZone === zone) {
@@ -676,102 +762,6 @@ function AdminDashboard() {
 
       </div>
 
-      {/* MAP */}
-      <div className="bg-white rounded-3xl shadow-md p-6 mb-6">
-
-        <h2 className="text-2xl font-bold mb-5">
-          Colombo Resident Map
-        </h2>
-
-        <MapContainer
-          center={[6.9271, 79.8612]}
-          zoom={11}
-          style={{
-            height: "550px",
-            width: "100%",
-            borderRadius: "20px",
-          }}
-        >
-          <TileLayer
-            attribution="&copy; OpenStreetMap contributors"
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-
-          {/* NORTH WEST */}
-          <Rectangle
-            bounds={[
-              [6.95, 79.8],
-              [7.05, 79.9],
-            ]}
-            pathOptions={{
-              color: "red",
-              fillOpacity: 0.2,
-            }}
-          />
-
-          {/* NORTH EAST */}
-          <Rectangle
-            bounds={[
-              [6.95, 79.9],
-              [7.05, 80.02],
-            ]}
-            pathOptions={{
-              color: "green",
-              fillOpacity: 0.2,
-            }}
-          />
-
-          {/* SOUTH WEST */}
-          <Rectangle
-            bounds={[
-              [6.8, 79.8],
-              [6.95, 79.9],
-            ]}
-            pathOptions={{
-              color: "blue",
-              fillOpacity: 0.2,
-            }}
-          />
-
-          {/* SOUTH EAST */}
-          <Rectangle
-            bounds={[
-              [6.8, 79.9],
-              [6.95, 80.02],
-            ]}
-            pathOptions={{
-              color: "purple",
-              fillOpacity: 0.2,
-            }}
-          />
-
-          {/* RESIDENTS */}
-          {residents.map((resident) => (
-            <Marker
-              key={resident._id}
-              position={[
-                resident.location.latitude,
-                resident.location.longitude,
-              ]}
-            >
-              <Popup>
-                <div>
-                  <h2 className="font-bold text-lg">
-                    {resident.name}
-                  </h2>
-
-                  <p>{resident.email}</p>
-
-                  <p>
-                    📍 {resident.address}
-                  </p>
-                </div>
-              </Popup>
-            </Marker>
-          ))}
-        </MapContainer>
-      </div>
-
       {/* DOCUMENT SECTION */}
       <div className="grid lg:grid-cols-3 gap-6">
 
@@ -912,6 +902,316 @@ function AdminDashboard() {
         </div>
 
       </div>
+
+      {/* ============================================================ */}
+      {/* ROUTE PREVIEW TAB SECTION                                    */}
+      {/* ============================================================ */}
+      <div className="bg-white rounded-3xl shadow-md p-6 mt-6">
+
+        {/* TAB HEADER */}
+        <div className="flex gap-4 mb-6 border-b pb-4">
+          <button
+            onClick={() => setActiveTab("map")}
+            className={`px-5 py-2 rounded-2xl font-bold text-sm ${
+              activeTab === "map"
+                ? "bg-blue-600 text-white"
+                : "bg-slate-100 text-slate-600"
+            }`}
+          >
+            Resident Map
+          </button>
+          <button
+            onClick={() => setActiveTab("routes")}
+            className={`px-5 py-2 rounded-2xl font-bold text-sm ${
+              activeTab === "routes"
+                ? "bg-blue-600 text-white"
+                : "bg-slate-100 text-slate-600"
+            }`}
+          >
+            Route Preview
+          </button>
+        </div>
+
+        {/* TAB: RESIDENT MAP (existing) */}
+        {activeTab === "map" && (
+          <div>
+            <h2 className="text-2xl font-bold mb-5">Colombo Resident Map</h2>
+            <MapContainer
+              center={[6.9271, 79.8612]}
+              zoom={11}
+              style={{ height: "550px", width: "100%", borderRadius: "20px" }}
+            >
+              <TileLayer
+                attribution="&copy; OpenStreetMap contributors"
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
+              {/* NORTH WEST */}
+              <Rectangle
+                bounds={[[6.95, 79.8], [7.05, 79.9]]}
+                pathOptions={{ color: "red", fillOpacity: 0.2 }}
+              />
+              {/* NORTH EAST */}
+              <Rectangle
+                bounds={[[6.95, 79.9], [7.05, 80.02]]}
+                pathOptions={{ color: "green", fillOpacity: 0.2 }}
+              />
+              {/* SOUTH WEST */}
+              <Rectangle
+                bounds={[[6.8, 79.8], [6.95, 79.9]]}
+                pathOptions={{ color: "blue", fillOpacity: 0.2 }}
+              />
+              {/* SOUTH EAST */}
+              <Rectangle
+                bounds={[[6.8, 79.9], [6.95, 80.02]]}
+                pathOptions={{ color: "purple", fillOpacity: 0.2 }}
+              />
+              {/* RESIDENTS */}
+              {residents.map((resident) => {
+                if (!resident.location?.coordinates || resident.location.coordinates.length < 2) return null;
+                return (
+                  <Marker
+                    key={resident._id}
+                    position={[
+                      resident.location.coordinates[1],
+                      resident.location.coordinates[0],
+                    ]}
+                  >
+                    <Popup>
+                      <div>
+                        <h2 className="font-bold text-lg">{resident.name}</h2>
+                        <p>{resident.email}</p>
+                        <p>📍 {resident.address}</p>
+                      </div>
+                    </Popup>
+                  </Marker>
+                );
+              })}
+            </MapContainer>
+          </div>
+        )}
+
+        {/* TAB: ROUTE PREVIEW */}
+        {activeTab === "routes" && (
+          <div>
+            <h2 className="text-2xl font-bold mb-5">Route Preview</h2>
+
+            {/* CONTROLS */}
+            <div className="flex flex-wrap gap-4 mb-6 items-end">
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                  Zone
+                </label>
+                <select
+                  value={routePreviewZone}
+                  onChange={(e) => setRoutePreviewZone(e.target.value)}
+                  className="border p-3 rounded-2xl"
+                >
+                  <option value="NW">NW — North West</option>
+                  <option value="NE">NE — North East</option>
+                  <option value="SW">SW — South West</option>
+                  <option value="SE">SE — South East</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                  Date
+                </label>
+                <input
+                  type="date"
+                  value={routePreviewDate}
+                  onChange={(e) => setRoutePreviewDate(e.target.value)}
+                  className="border p-3 rounded-2xl"
+                />
+              </div>
+
+              <button
+                onClick={fetchRoutePreview}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl font-bold"
+              >
+                Load Route
+              </button>
+
+              <button
+                onClick={handleManualGenerate}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-2xl font-bold"
+              >
+                Generate Route
+              </button>
+            </div>
+
+            {/* ROUTE SUMMARY CARDS */}
+            {routePreviewData.length === 0 ? (
+              <p className="text-gray-400 mb-4">No routes found. Click "Load Route" to fetch.</p>
+            ) : (
+              <div className="grid md:grid-cols-2 gap-4 mb-6">
+                {routePreviewData.map((r) => (
+                  <div key={r._id} className="bg-slate-50 border rounded-2xl p-4">
+                    <h3 className="font-bold text-lg">Zone {r.zone}</h3>
+                    <p className="text-sm text-gray-600">
+                      Distance: <strong>{r.totalDistanceKm} km</strong>
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      Stops: <strong>{r.stops?.length || 0}</strong>
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      Driver: <strong>{r.assignedDriverId?.name || "—"}</strong>
+                    </p>
+                    <p className="text-sm">
+                      Status:{" "}
+                      <span
+                        className={`font-bold ${
+                          r.status === "completed"
+                            ? "text-green-600"
+                            : r.status === "in_progress"
+                            ? "text-orange-500"
+                            : "text-slate-500"
+                        }`}
+                      >
+                        {r.status}
+                      </span>
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* ROUTE MAP */}
+            {routePreviewData.length > 0 && (
+              <MapContainer
+                center={[6.9271, 79.8612]}
+                zoom={12}
+                style={{ height: "500px", width: "100%", borderRadius: "20px" }}
+              >
+                <TileLayer
+                  attribution="&copy; OpenStreetMap contributors"
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+                {routePreviewData.map((r) => {
+                  const polylinePositions = r.optimizedPolyline.map(
+                    ([lng, lat]) => [lat, lng]
+                  );
+
+                  if (polylinePositions.length === 0) return null;
+
+                  // Find indices corresponding to first and last stop
+                  const firstStop = r.stops[0];
+                  const lastStop = r.stops[r.stops.length - 1];
+
+                  const index1 = firstStop
+                    ? findClosestIndex(polylinePositions, [firstStop.coordinates[1], firstStop.coordinates[0]])
+                    : 0;
+
+                  const indexN = lastStop
+                    ? findClosestIndex(polylinePositions, [lastStop.coordinates[1], lastStop.coordinates[0]])
+                    : polylinePositions.length - 1;
+
+                  // Split route into Outgoing, Collection, and Return paths
+                  const outgoingPath = polylinePositions.slice(0, index1 + 1);
+                  const collectionPath = polylinePositions.slice(index1, indexN + 1);
+                  const returnPath = polylinePositions.slice(indexN);
+
+                  // Calculate arrow coordinates and bearings
+                  // Draw an arrow marker every 30 points along the polyline
+                  const arrowMarkers = [];
+                  const interval = 30;
+                  for (let i = 10; i < polylinePositions.length - 10; i += interval) {
+                    const c1 = polylinePositions[i];
+                    const c2 = polylinePositions[i + 5] || polylinePositions[i + 1];
+                    const angle = getAngle(c1, c2);
+                    arrowMarkers.push({
+                      id: `arrow-${r._id}-${i}`,
+                      position: c1,
+                      angle: angle
+                    });
+                  }
+
+                  return (
+                    <div key={`route-layers-${r._id}`}>
+                      {/* Outgoing Path (Blue) */}
+                      {outgoingPath.length > 0 && (
+                        <Polyline
+                          positions={outgoingPath}
+                          color="#2563EB"
+                          weight={5}
+                          dashArray="5, 10"
+                        />
+                      )}
+
+                      {/* Collection Path (Emerald) */}
+                      {collectionPath.length > 0 && (
+                        <Polyline
+                          positions={collectionPath}
+                          color="#10B981"
+                          weight={5}
+                        />
+                      )}
+
+                      {/* Return Path (Rose Red) */}
+                      {returnPath.length > 0 && (
+                        <Polyline
+                          positions={returnPath}
+                          color="#F43F5E"
+                          weight={5}
+                          dashArray="5, 10"
+                        />
+                      )}
+
+                      {/* Directional arrows */}
+                      {arrowMarkers.map((arrow) => (
+                        <Marker
+                          key={arrow.id}
+                          position={arrow.position}
+                          icon={L.divIcon({
+                            className: "bg-transparent border-none",
+                            html: `<div style="transform: rotate(${arrow.angle}deg); color: #1E293B; font-size: 16px; font-weight: bold; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; user-select: none; pointer-events: none;">➔</div>`,
+                            iconSize: [16, 16],
+                            iconAnchor: [8, 8]
+                          })}
+                        />
+                      ))}
+
+                      {/* CMC Depot Marker */}
+                      <Marker
+                        position={CMC_MAP_LATLNG}
+                        icon={L.divIcon({
+                          className: "bg-transparent border-none",
+                          html: `<div style="background-color: #312E81; border: 2px solid white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);"><span style="color: white; font-size: 10px; font-weight: 900;">🏛️</span></div>`,
+                          iconSize: [24, 24],
+                          iconAnchor: [12, 12]
+                        })}
+                      >
+                        <Popup>
+                          <strong>Colombo Municipal Council (CMC)</strong>
+                          <br />
+                          Route Start & End Depot
+                        </Popup>
+                      </Marker>
+
+                      {/* Collection Stops */}
+                      {r.stops?.map((stop) => (
+                        <Marker
+                          key={`stop-${r._id}-${stop.order}`}
+                          position={[stop.coordinates[1], stop.coordinates[0]]}
+                        >
+                          <Popup>
+                            <strong>Stop #{stop.order}</strong>
+                            <br />
+                            {stop.address}
+                            <br />
+                            ETA: {stop.estimatedArrival}
+                          </Popup>
+                        </Marker>
+                      ))}
+                    </div>
+                  );
+                })}
+              </MapContainer>
+            )}
+          </div>
+        )}
+      </div>
+
     </div>
   );
 }

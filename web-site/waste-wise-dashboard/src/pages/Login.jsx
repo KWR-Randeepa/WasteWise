@@ -43,7 +43,13 @@ function Login() {
       login(data);
 
       // redirect
-      navigate(data.role === "admin" ? "/admin" : "/");
+      if (data.role === "admin") {
+        navigate("/admin");
+      } else if (data.role === "driver") {
+        navigate("/driver");
+      } else {
+        navigate("/");
+      }
 
     } catch (err) {
       setError("Server error. Please try again.");

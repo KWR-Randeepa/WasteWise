@@ -47,18 +47,33 @@ const WasteEntrySchema = new mongoose.Schema(
       enum: ["pending", "collected", "rejected"],
       default: "pending",
     },
+
+    readyForCollection: {
+      type: Boolean,
+      default: false
+    },
+
+    scheduledDate: {
+      type: Date
+    },
+
+    collectionStatus: {
+      type: String,
+      enum: ["pending", "collected"],
+      default: "pending"
+    }
   },
   { timestamps: true }
 );
 
 // ✅ BEFORE SAVE GENERATE RANDOM WEIGHT
-WasteEntrySchema.pre("save", function (next) {
+WasteEntrySchema.pre("save", function () {
   if (!this.weight) {
     this.weight = generateWeight(this.wasteSize);
   }
-
-  next();
 });
+
+WasteEntrySchema.index({ readyForCollection: 1, scheduledDate: 1 });
 
 export default mongoose.model(
   "WasteEntry",

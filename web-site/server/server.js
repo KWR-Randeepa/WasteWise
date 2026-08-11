@@ -8,6 +8,9 @@ import documentRoutes from "./routes/documentRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import fileUpload from "express-fileupload";
 import wasteRoutes from "./routes/wasteRoutes.js";
+import routeRoutes from "./routes/routeRoutes.js";
+import "./jobs/routeOptimizer.job.js";
+
 
 // 🔹 Load env variables
 
@@ -26,6 +29,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/api/upload", uploadRoutes);
 app.use("/api/documents", documentRoutes);
 app.use("/api/waste", wasteRoutes);
+app.use("/api/routes", routeRoutes);
+
 // 🔹 Root Route
 app.get("/", (req, res) => {
   res.send("🚀 Waste Wise API is running...");
